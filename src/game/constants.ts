@@ -16,3 +16,13 @@ export const SCENES = {
   TITLE: 'TitleScene',
   PLAY: 'PlayScene',
 } as const;
+
+// 패들 설정
+export const PADDLE = {
+  WIDTH: 100,
+  HEIGHT: 15, // 20 * 3/4
+  COLOR: 0xffffff,
+  SPEED: 500,
+  BOTTOM_OFFSET: 50,
+  RADIUS: 4, // 둥근 모서리 반경
+} as const;
