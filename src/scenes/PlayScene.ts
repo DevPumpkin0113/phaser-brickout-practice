@@ -1,11 +1,13 @@
 import Phaser from 'phaser';
-import { SCENES, PADDLE, BALL } from '../game/constants';
+import { SCENES, PADDLE, BALL, BRICK } from '../game/constants';
 import { Paddle } from '../entities/Paddle';
 import { Ball } from '../entities/Ball';
+import { Brick } from '../entities/Brick';
 
 export class PlayScene extends Phaser.Scene {
   private paddle!: Paddle;
   private ball!: Ball;
+  private bricks!: Phaser.GameObjects.Group;
   private canLaunch: boolean = false;
 
   constructor() {
@@ -14,6 +16,7 @@ export class PlayScene extends Phaser.Scene {
 
   create(): void {
     this.canLaunch = false;
+    this.createBricks();
     this.createPaddle();
     this.createBall();
     this.setupCollisions();
@@ -23,6 +26,26 @@ export class PlayScene extends Phaser.Scene {
     this.time.delayedCall(200, () => {
       this.canLaunch = true;
     });
+  }
+
+  private createBricks(): void {
+    this.bricks = this.add.group();
+
+    const { width } = this.scale;
+    const totalWidth = BRICK.COLS * (BRICK.WIDTH + BRICK.PADDING) - BRICK.PADDING;
+    const startX = (width - totalWidth) / 2 + BRICK.WIDTH / 2;
+
+    for (let row = 0; row < BRICK.ROWS; row++) {
+      const color = BRICK.COLORS[row % BRICK.COLORS.length];
+
+      for (let col = 0; col < BRICK.COLS; col++) {
+        const x = startX + col * (BRICK.WIDTH + BRICK.PADDING);
+        const y = BRICK.TOP_OFFSET + row * (BRICK.HEIGHT + BRICK.PADDING);
+
+        const brick = new Brick(this, x, y, color);
+        this.bricks.add(brick);
+      }
+    }
   }
 
   private createPaddle(): void {
@@ -51,17 +74,32 @@ export class PlayScene extends Phaser.Scene {
       this
     );
 
+    // 벽돌-공 충돌
+    this.physics.add.collider(
+      this.ball,
+      this.bricks,
+      this.handleBallBrickCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+      undefined,
+      this
+    );
+
     // 바닥 충돌 감지
     this.physics.world.on('worldbounds', this.handleWorldBounds, this);
   }
 
   private shouldCollide(): boolean {
-    // 공이 발사된 상태에서만 충돌 처리
     return this.ball.getIsLaunched();
   }
 
   private handleBallPaddleCollision(): void {
     this.ball.bounceOffPaddle(this.paddle);
+  }
+
+  private handleBallBrickCollision(
+    _ball: Phaser.GameObjects.GameObject,
+    brick: Phaser.GameObjects.GameObject
+  ): void {
+    brick.destroy();
   }
 
   private handleWorldBounds(
@@ -70,13 +108,11 @@ export class PlayScene extends Phaser.Scene {
     down: boolean
   ): void {
     if (body.gameObject === this.ball && down) {
-      // 바닥에 닿으면 공 리셋 (추후 라이프 감소 처리)
       this.resetBall();
     }
   }
 
   private resetBall(): void {
-    // 화면 흔들림 효과
     this.cameras.main.shake(200, 0.01);
 
     const { width, height } = this.scale;
@@ -97,7 +133,6 @@ export class PlayScene extends Phaser.Scene {
       this.scene.start(SCENES.TITLE);
     });
 
-    // 마우스/터치를 뗄 때 또는 스페이스로 공 발사
     this.input.on('pointerup', () => {
       this.launchBall();
     });
@@ -110,7 +145,6 @@ export class PlayScene extends Phaser.Scene {
   update(): void {
     this.paddle.update();
 
-    // 공이 발사되지 않았으면 패들 위에 고정
     if (!this.ball.getIsLaunched()) {
       this.ball.setX(this.paddle.x);
     }

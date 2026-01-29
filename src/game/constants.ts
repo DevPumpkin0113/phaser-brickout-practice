@@ -32,5 +32,16 @@ export const BALL = {
   RADIUS: 8,
   COLOR: 0xffffff,
   SPEED: 400,
-  MAX_ANGLE: 60, // 패들 반사 최대 각도 (도)
+  MAX_ANGLE: 60,
+} as const;
+
+// 벽돌 설정
+export const BRICK = {
+  WIDTH: 50,
+  HEIGHT: 20,
+  PADDING: 4,
+  TOP_OFFSET: 80,
+  ROWS: 5,
+  COLS: 8,
+  COLORS: [0xe94560, 0xf39c12, 0x2ecc71, 0x3498db, 0x9b59b6] as readonly number[],
 } as const;
