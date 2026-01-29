@@ -139,4 +139,8 @@
 | 날짜 | 작업 내용 | 브랜치 |
 |------|----------|--------|
 | - | 프로젝트 초기 설정 | main |
+| - | Phase 1.1: 게임 기본 구조 (Boot, Title, Play 씬) | feat/scene_structure |
+| - | Phase 1.2: 패들 구현 (키보드/마우스 조작) | feat/paddle |
+| - | Phase 1.3: 공 구현 (발사, 반사, 리셋) | feat/ball |
+| - | Phase 1.4: 벽돌 구현 (5x8 배열, 충돌 처리) | feat/bricks |
 
