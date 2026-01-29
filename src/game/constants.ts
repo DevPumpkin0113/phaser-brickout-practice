@@ -46,11 +46,38 @@ export const BRICK = {
   COLORS: [0xe94560, 0xf39c12, 0x2ecc71, 0x3498db, 0x9b59b6] as readonly number[],
 } as const;
 
+// 벽돌 타입별 설정
+export const BRICK_TYPES = {
+  NORMAL: {
+    health: 1,
+    color: 0xe94560,
+    points: 10,
+  },
+  STRONG: {
+    health: 2,
+    color: 0xf39c12,
+    points: 20,
+  },
+  UNBREAKABLE: {
+    health: Infinity,
+    color: 0x5c5c5c,
+    points: 0,
+  },
+  ITEM: {
+    health: 1,
+    color: 0x9b59b6,
+    points: 15,
+  },
+} as const;
+
 // 게임 설정
 export const GAME = {
   INITIAL_LIVES: 3,
   BRICK_POINTS: 10,
   STAGE_CLEAR_BONUS: 100,
+  BASE_BALL_SPEED: 400, // 기본 공 속도
+  BALL_SPEED_INCREMENT: 20, // 스테이지당 속도 증가량
+  MAX_BALL_SPEED: 600, // 최대 공 속도
 } as const;
 
 // UI 설정

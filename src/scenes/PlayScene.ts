@@ -1,9 +1,10 @@
 import Phaser from 'phaser';
-import { SCENES, PADDLE, BALL, BRICK, GAME, UI } from '../game/constants';
+import { SCENES, PADDLE, BALL, UI } from '../game/constants';
 import { Paddle } from '../entities/Paddle';
 import { Ball } from '../entities/Ball';
 import { Brick } from '../entities/Brick';
 import { GameStateManager } from '../systems/GameStateManager';
+import { StageLoader } from '../systems/StageLoader';
 import { GameState } from '../types';
 import { HUD } from '../ui/HUD';
 
@@ -13,9 +14,11 @@ export class PlayScene extends Phaser.Scene {
   private bricks!: Phaser.GameObjects.Group;
   private canLaunch: boolean = false;
   private gameStateManager!: GameStateManager;
+  private stageLoader!: StageLoader;
   private hud!: HUD;
   private uiBarrier!: Phaser.Physics.Arcade.StaticGroup;
   private pausePopup?: Phaser.GameObjects.Container;
+  private debugPanel?: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: SCENES.PLAY });
@@ -24,14 +27,16 @@ export class PlayScene extends Phaser.Scene {
   create(): void {
     this.canLaunch = false;
 
-    // 게임 상태 및 UI 초기화
+    // 게임 상태 및 시스템 초기화
     this.gameStateManager = new GameStateManager();
+    this.stageLoader = new StageLoader(this);
     this.hud = new HUD(this, () => this.showPausePopup());
 
     this.createUIBarrier();
-    this.createBricks();
+    this.bricks = this.add.group();
     this.createPaddle();
     this.createBall();
+    this.loadCurrentStage(); // ball 생성 후 호출
     this.setupCollisions();
     this.setupInput();
 
@@ -40,6 +45,9 @@ export class PlayScene extends Phaser.Scene {
       this.canLaunch = true;
       this.gameStateManager.setState(GameState.PLAYING);
     });
+
+    // 디버그: 스테이지 선택기
+    this.createDebugPanel();
   }
 
   private createUIBarrier(): void {
@@ -52,24 +60,17 @@ export class PlayScene extends Phaser.Scene {
     this.uiBarrier.add(barrier);
   }
 
-  private createBricks(): void {
-    this.bricks = this.add.group();
+  private loadCurrentStage(): void {
+    const currentStage = this.gameStateManager.getStage();
+    const stageData = this.stageLoader.loadStage(currentStage, this.bricks);
 
-    const { width } = this.scale;
-    const totalWidth = BRICK.COLS * (BRICK.WIDTH + BRICK.PADDING) - BRICK.PADDING;
-    const startX = (width - totalWidth) / 2 + BRICK.WIDTH / 2;
-
-    for (let row = 0; row < BRICK.ROWS; row++) {
-      const color = BRICK.COLORS[row % BRICK.COLORS.length];
-
-      for (let col = 0; col < BRICK.COLS; col++) {
-        const x = startX + col * (BRICK.WIDTH + BRICK.PADDING);
-        const y = BRICK.TOP_OFFSET + row * (BRICK.HEIGHT + BRICK.PADDING);
-
-        const brick = new Brick(this, x, y, color);
-        this.bricks.add(brick);
-      }
+    // 스테이지에 맞는 공 속도 설정
+    if (this.ball) {
+      this.ball.setSpeed(stageData.ballSpeed);
     }
+
+    // HUD 업데이트
+    this.hud.updateStage(currentStage);
   }
 
   private createPaddle(): void {
@@ -124,17 +125,29 @@ export class PlayScene extends Phaser.Scene {
 
   private handleBallBrickCollision(
     _ball: Phaser.GameObjects.GameObject,
-    brick: Phaser.GameObjects.GameObject
+    brickObject: Phaser.GameObjects.GameObject
   ): void {
-    brick.destroy();
+    const brick = brickObject as Brick;
 
-    // 점수 추가
-    this.gameStateManager.addScore(GAME.BRICK_POINTS);
-    this.hud.updateScore(this.gameStateManager.getScore());
+    // 벽돌 충돌 처리
+    const isDestroyed = brick.hit();
 
-    // 모든 벽돌 파괴 시 스테이지 클리어
-    if (this.bricks.getLength() === 0) {
-      this.handleStageClear();
+    if (isDestroyed) {
+      // 점수 추가
+      this.gameStateManager.addScore(brick.getPoints());
+      this.hud.updateScore(this.gameStateManager.getScore());
+
+      // 벽돌 파괴
+      brick.destroy();
+
+      // 파괴 가능한 벽돌이 모두 파괴되었는지 확인
+      const remainingDestructibleBricks = this.bricks
+        .getChildren()
+        .filter((b) => (b as Brick).isDestructible());
+
+      if (remainingDestructibleBricks.length === 0) {
+        this.handleStageClear();
+      }
     }
   }
 
@@ -170,9 +183,12 @@ export class PlayScene extends Phaser.Scene {
 
   private handleStageClear(): void {
     this.gameStateManager.setState(GameState.STAGE_CLEAR);
+    this.physics.pause(); // 물리 엔진 일시정지
 
     // 클리어 보너스 추가
-    this.gameStateManager.addScore(GAME.STAGE_CLEAR_BONUS);
+    const currentStage = this.gameStateManager.getStage();
+    const clearBonus = this.stageLoader.getClearBonus(currentStage);
+    this.gameStateManager.addScore(clearBonus);
     this.hud.updateScore(this.gameStateManager.getScore());
 
     // 스테이지 클리어 텍스트 표시
@@ -184,15 +200,27 @@ export class PlayScene extends Phaser.Scene {
     });
     clearText.setOrigin(0.5);
 
-    // 2초 후 다음 스테이지로 (현재는 씬 재시작)
+    // 2초 후 다음 스테이지로
     this.time.delayedCall(2000, () => {
+      clearText.destroy();
       this.gameStateManager.nextStage();
-      this.scene.restart();
+      this.loadCurrentStage();
+
+      // 공 리셋
+      const ballX = width / 2;
+      const ballY = height - PADDLE.BOTTOM_OFFSET - PADDLE.HEIGHT / 2 - BALL.RADIUS - 5;
+      this.ball.reset(ballX, ballY);
+
+      // 게임 재개
+      this.physics.resume(); // 물리 엔진 재개
+      this.canLaunch = true;
+      this.gameStateManager.setState(GameState.PLAYING);
     });
   }
 
   private handleGameOver(): void {
     this.gameStateManager.setState(GameState.GAME_OVER);
+    this.physics.pause(); // 물리 엔진 일시정지
 
     const { width, height } = this.scale;
     const gameOverText = this.add.text(width / 2, height / 2, 'GAME OVER', {
@@ -251,10 +279,10 @@ export class PlayScene extends Phaser.Scene {
     });
     resumeButton.setOrigin(0.5);
     resumeButton.setInteractive({ useHandCursor: true });
-    resumeButton.on('pointerdown', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+    resumeButton.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
     });
-    resumeButton.on('pointerup', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+    resumeButton.on('pointerup', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       this.hidePausePopup();
     });
@@ -266,10 +294,10 @@ export class PlayScene extends Phaser.Scene {
     });
     titleButton.setOrigin(0.5);
     titleButton.setInteractive({ useHandCursor: true });
-    titleButton.on('pointerdown', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+    titleButton.on('pointerdown', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
     });
-    titleButton.on('pointerup', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+    titleButton.on('pointerup', (_pointer: Phaser.Input.Pointer, _localX: number, _localY: number, event: Phaser.Types.Input.EventData) => {
       event.stopPropagation();
       // 팝업 정리 후 타이틀로 이동
       if (this.pausePopup) {
@@ -329,6 +357,88 @@ export class PlayScene extends Phaser.Scene {
     this.input.keyboard?.on('keydown-SPACE', () => {
       this.launchBall();
     });
+
+    // 디버그 패널 토글 (D 키)
+    this.input.keyboard?.on('keydown-D', () => {
+      this.toggleDebugPanel();
+    });
+  }
+
+  private createDebugPanel(): void {
+    const { height } = this.scale;
+
+    // 배경
+    const bg = this.add.rectangle(10, height - 50, 200, 40, 0x000000, 0.7);
+    bg.setOrigin(0, 0);
+
+    // 스테이지 텍스트
+    const stageText = this.add.text(20, height - 45, 'DEBUG Stage: 1', {
+      fontSize: '16px',
+      color: '#00ff00',
+      fontStyle: 'bold',
+    });
+
+    // 이전 스테이지 버튼
+    const prevButton = this.add.text(140, height - 45, '◀', {
+      fontSize: '20px',
+      color: '#ffffff',
+    });
+    prevButton.setInteractive({ useHandCursor: true });
+    prevButton.on('pointerdown', () => {
+      const currentStage = this.gameStateManager.getStage();
+      if (currentStage > 1) {
+        this.jumpToStage(currentStage - 1, stageText);
+      }
+    });
+
+    // 다음 스테이지 버튼
+    const nextButton = this.add.text(170, height - 45, '▶', {
+      fontSize: '20px',
+      color: '#ffffff',
+    });
+    nextButton.setInteractive({ useHandCursor: true });
+    nextButton.on('pointerdown', () => {
+      const currentStage = this.gameStateManager.getStage();
+      this.jumpToStage(currentStage + 1, stageText);
+    });
+
+    // 컨테이너에 담기
+    this.debugPanel = this.add.container(0, 0, [bg, stageText, prevButton, nextButton]);
+    // 일시정지 팝업보다 위에 표시되도록 depth 설정
+    this.debugPanel.setDepth(1000);
+    // 기본적으로 숨김 상태
+    this.debugPanel.setVisible(false);
+  }
+
+  private toggleDebugPanel(): void {
+    if (this.debugPanel) {
+      this.debugPanel.setVisible(!this.debugPanel.visible);
+    }
+  }
+
+  private jumpToStage(stage: number, stageText: Phaser.GameObjects.Text): void {
+    // 스테이지 업데이트
+    this.gameStateManager.setStage(stage);
+    stageText.setText(`DEBUG Stage: ${stage}`);
+
+    // 물리 엔진이 일시정지 상태면 재개
+    if (!this.physics.world.isPaused) {
+      this.physics.pause();
+    }
+
+    // 스테이지 로드
+    this.loadCurrentStage();
+
+    // 공 리셋
+    const { height } = this.scale;
+    const ballX = this.scale.width / 2;
+    const ballY = height - PADDLE.BOTTOM_OFFSET - PADDLE.HEIGHT / 2 - BALL.RADIUS - 5;
+    this.ball.reset(ballX, ballY);
+
+    // 게임 재개
+    this.physics.resume();
+    this.canLaunch = true;
+    this.gameStateManager.setState(GameState.PLAYING);
   }
 
   update(): void {
