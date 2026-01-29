@@ -3,6 +3,7 @@ import { BALL } from '../game/constants';
 
 export class Ball extends Phaser.GameObjects.Arc {
   private isLaunched: boolean = false;
+  private speed: number = BALL.SPEED;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     super(scene, x, y, BALL.RADIUS, 0, 360, false, BALL.COLOR);
@@ -31,7 +32,7 @@ export class Ball extends Phaser.GameObjects.Arc {
 
     // 랜덤 각도로 발사 (-45도 ~ -135도, 위쪽 방향)
     const angle = Phaser.Math.Between(-135, -45);
-    const velocity = this.scene.physics.velocityFromAngle(angle, BALL.SPEED);
+    const velocity = this.scene.physics.velocityFromAngle(angle, this.speed);
     body.setVelocity(velocity.x, velocity.y);
   }
 
@@ -54,12 +55,28 @@ export class Ball extends Phaser.GameObjects.Arc {
 
     // 반사 각도 계산 (중앙: 수직, 가장자리: 최대 각도)
     const angle = -90 + clampedHit * BALL.MAX_ANGLE;
-    const velocity = this.scene.physics.velocityFromAngle(angle, BALL.SPEED);
+    const velocity = this.scene.physics.velocityFromAngle(angle, this.speed);
 
     ballBody.setVelocity(velocity.x, velocity.y);
   }
 
   getIsLaunched(): boolean {
     return this.isLaunched;
+  }
+
+  setSpeed(speed: number): void {
+    this.speed = speed;
+
+    // 이미 발사된 공이면 속도 업데이트
+    if (this.isLaunched) {
+      const body = this.body as Phaser.Physics.Arcade.Body;
+      const currentVelocity = body.velocity;
+      const currentSpeed = currentVelocity.length();
+
+      if (currentSpeed > 0) {
+        const normalized = currentVelocity.normalize();
+        body.setVelocity(normalized.x * speed, normalized.y * speed);
+      }
+    }
   }
 }

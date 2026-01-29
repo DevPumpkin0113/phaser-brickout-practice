@@ -45,6 +45,10 @@ export class GameStateManager {
     return this.data.stage;
   }
 
+  setStage(stage: number): void {
+    this.data.stage = stage;
+  }
+
   nextStage(): void {
     this.data.stage += 1;
   }

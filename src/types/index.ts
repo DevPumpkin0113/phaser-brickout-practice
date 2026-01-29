@@ -13,3 +13,34 @@ export interface GameData {
   lives: number;
   stage: number;
 }
+
+// 벽돌 타입
+export enum BrickType {
+  NORMAL = 'NORMAL', // 일반 벽돌 (1회 충돌)
+  STRONG = 'STRONG', // 강화 벽돌 (2~3회 충돌)
+  UNBREAKABLE = 'UNBREAKABLE', // 무적 벽돌 (파괴 불가)
+  ITEM = 'ITEM', // 아이템 벽돌 (아이템 드롭)
+}
+
+// 벽돌 설정
+export interface BrickConfig {
+  type: BrickType;
+  health: number; // 내구도 (충돌 횟수)
+  color: number;
+  points: number; // 파괴 시 점수
+}
+
+// 스테이지 벽돌 데이터
+export interface StageBrickData {
+  row: number;
+  col: number;
+  type: BrickType;
+}
+
+// 스테이지 데이터
+export interface StageData {
+  stage: number;
+  bricks: StageBrickData[]; // 벽돌 배치
+  ballSpeed: number; // 공 속도
+  clearBonus: number; // 클리어 보너스
+}
