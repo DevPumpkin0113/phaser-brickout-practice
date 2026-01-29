@@ -45,3 +45,15 @@ export const BRICK = {
   COLS: 8,
   COLORS: [0xe94560, 0xf39c12, 0x2ecc71, 0x3498db, 0x9b59b6] as readonly number[],
 } as const;
+
+// 게임 설정
+export const GAME = {
+  INITIAL_LIVES: 3,
+  BRICK_POINTS: 10,
+  STAGE_CLEAR_BONUS: 100,
+} as const;
+
+// UI 설정
+export const UI = {
+  TOP_BARRIER_HEIGHT: 60, // 상단 UI 영역 높이
+} as const;
