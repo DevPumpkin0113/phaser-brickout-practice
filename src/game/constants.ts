@@ -20,9 +20,17 @@ export const SCENES = {
 // 패들 설정
 export const PADDLE = {
   WIDTH: 100,
-  HEIGHT: 15, // 20 * 3/4
+  HEIGHT: 8,
   COLOR: 0xffffff,
   SPEED: 500,
-  BOTTOM_OFFSET: 50,
-  RADIUS: 4, // 둥근 모서리 반경
+  BOTTOM_OFFSET: 80,
+  RADIUS: 4,
+} as const;
+
+// 공 설정
+export const BALL = {
+  RADIUS: 8,
+  COLOR: 0xffffff,
+  SPEED: 400,
+  MAX_ANGLE: 60, // 패들 반사 최대 각도 (도)
 } as const;
