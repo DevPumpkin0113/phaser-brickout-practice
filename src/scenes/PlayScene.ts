@@ -251,7 +251,13 @@ export class PlayScene extends Phaser.Scene {
     });
     resumeButton.setOrigin(0.5);
     resumeButton.setInteractive({ useHandCursor: true });
-    resumeButton.on('pointerdown', () => this.hidePausePopup());
+    resumeButton.on('pointerdown', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+    });
+    resumeButton.on('pointerup', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+      this.hidePausePopup();
+    });
 
     // 타이틀로 버튼
     const titleButton = this.add.text(width / 2, height / 2 + 80, 'QUIT TO TITLE', {
@@ -260,7 +266,11 @@ export class PlayScene extends Phaser.Scene {
     });
     titleButton.setOrigin(0.5);
     titleButton.setInteractive({ useHandCursor: true });
-    titleButton.on('pointerdown', () => {
+    titleButton.on('pointerdown', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
+    });
+    titleButton.on('pointerup', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
       // 팝업 정리 후 타이틀로 이동
       if (this.pausePopup) {
         this.pausePopup.destroy();
@@ -294,7 +304,11 @@ export class PlayScene extends Phaser.Scene {
   }
 
   private launchBall(): void {
-    if (this.canLaunch && !this.ball.getIsLaunched()) {
+    if (
+      this.canLaunch &&
+      !this.ball.getIsLaunched() &&
+      this.gameStateManager.getState() === GameState.PLAYING
+    ) {
       this.ball.launch();
     }
   }
@@ -318,10 +332,12 @@ export class PlayScene extends Phaser.Scene {
   }
 
   update(): void {
-    this.paddle.update();
+    if (this.gameStateManager.getState() === GameState.PLAYING) {
+      this.paddle.update();
 
-    if (!this.ball.getIsLaunched()) {
-      this.ball.setX(this.paddle.x);
+      if (!this.ball.getIsLaunched()) {
+        this.ball.setX(this.paddle.x);
+      }
     }
   }
 }

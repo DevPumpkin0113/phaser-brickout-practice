@@ -40,10 +40,14 @@ export class HUD {
     });
     this.pauseButton.setOrigin(1, 0);
     this.pauseButton.setInteractive({ useHandCursor: true });
-    this.pauseButton.on('pointerdown', () => {
+    this.pauseButton.on('pointerdown', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
       if (this.onPauseClick) {
         this.onPauseClick();
       }
+    });
+    this.pauseButton.on('pointerup', (pointer: Phaser.Input.Pointer, localX: number, localY: number, event: Phaser.Types.Input.EventData) => {
+      event.stopPropagation();
     });
 
     // 하트 (하단 중앙)
