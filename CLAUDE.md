@@ -77,6 +77,24 @@ npm run test     # Vitest 테스트
 
 ---
 
+## Screen Configuration
+
+```typescript
+// game/config.ts 에서 설정
+scale: {
+  mode: Phaser.Scale.FIT,        // 비율 유지, 화면에 맞춤
+  autoCenter: Phaser.Scale.CENTER_BOTH,  // 화면 중앙 배치
+  width: 480,
+  height: 800                    // 9:16 세로 비율
+}
+```
+
+- **기본 해상도**: 480 x 800 (세로 모드)
+- **스케일 모드**: FIT - 비율 유지하면서 브라우저에 맞게 스케일링
+- **자동 센터링**: 브라우저 중앙에 게임 화면 배치
+
+---
+
 ## Development Workflow
 
 ### Branch Strategy
